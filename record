@@ -1,0 +1,61 @@
+记录一下训练的东西 以防自己记不住然后忘掉
+网络结构更改 从adptiveavgpool2d  ->  avgpool2d 这样可以在256x256训练 在256x1600上测试
+注释 val 是直接测试的 256x1600 的 图片 可以反映一下训练在 256x256 测试在256x1600 上的情况
+1 最开始实验直接 训练在croped 256x256 的图片上 -> 发现问题为 空白过多 导致IOU nan了 Loss很低 dice高 但是dice_pos 没有 pass掉
+Loss: 0.0502 | IoU: nan | dice: 0.9536 | dice_neg: 0.9536 | dice_pos: 0.0000
+仅crop在 有缺陷的图片上 Loss: 0.0805 | IoU: nan | dice: 0.9165 | dice_neg: 0.9165 | dice_pos: 0.0000 也不行 val dice_neg=1
+只能自己crop以后进行训练了
+-> 创建make_224.py 进行crop 然后padding to 256x256
+ reason : 缺陷图像貌似都不在很边缘  并且 Unet 对于边缘检测的不好 所以 padding 了 还有一个重要原因啦 先前比赛人家都padding 消除边缘检测
+ 效果差的问题
+现在的问题是 -> 怎么创建cropped数据集  images.zip 保存了pos和texture的图片 masks 保存了所有的
+之前用的是df
+现在新创建一个DataSet 需要一个df->没错 就是你 other_thing/cropped_df.csv
+images:texture + pos
+images_n:neg
+masks: images 里面的 masks  -> 如何的得知class 类型  masks（256,256） 中的数字进行了标记
+如果我要用 估计要把 masks化为普通的(4,256,256) 然后进行训练
+注 ： 我是个 我说怎么同一段代码 两个地方出的结果不一样 改了一晚上 发现读取目录不对 我是傻逼 实锤
+2 测试训练在 croped 224x224 padding to 256x256 的图片上
+3 看看直接croped在 缺陷上的效果
+4 数据增强的测试
+5 训练cls
+6 进行TTA
+
+原本 epoch 1 lr 1e-3 Loss: 0.0803 | IoU: 0.2855 | dice: 0.4580 | dice_neg: 0.4795 | dice_pos: 0.3719
+更改lr后 epoch lr 5e-4
+Loss: 0.0743 | IoU: 0.3226 | dice: 0.4919 | dice_neg: 0.4749 | dice_pos: 0.4163
+||||| phase: val  Loss: 0.0595 | IoU: 0.3713 | dice: 0.5488 | dice_neg: 0.1715 | dice_pos: 0.3773
+Starting epoch: 1 | phase: train | ⏰: 10:21:09
+100%|██████████| 3870/3870 [39:13<00:00,  1.64it/s]
+Loss: 0.0589 | IoU: 0.3989 | dice: 0.5801 | dice_neg: 0.5302 | dice_pos: 0.4995
+  0%|          | 0/3871 [00:00<?, ?it/s]Starting epoch: 1 | phase: val | ⏰: 11:00:23
+100%|██████████| 3871/3871 [02:54<00:00, 22.24it/s]
+Loss: 0.0533 | IoU: 0.3771 | dice: 0.5594 | dice_neg: 0.1795 | dice_pos: 0.3798
+******** New optimal found, saving state ********
+
+
+Loss: 0.0748 | IoU: 0.3124 | dice: 0.4877 | dice_neg: 0.4931 | dice_pos: 0.4028
+Starting epoch: 0 | phase: val | ⏰: 11:54:08
+100%|██████████| 3871/3871 [02:52<00:00, 22.39it/s]
+Loss: 0.0552 | IoU: 0.3956 | dice: 0.5763 | dice_neg: 0.1739 | dice_pos: 0.4025
+******** New optimal found, saving state ********
+
+Starting epoch: 1 | phase: train | ⏰: 11:57:05
+100%|██████████| 3870/3870 [38:31<00:00,  1.67it/s]
+Loss: 0.0591 | IoU: 0.3970 | dice: 0.5769 | dice_neg: 0.5247 | dice_pos: 0.4977
+Starting epoch: 1 | phase: val | ⏰: 12:35:36
+100%|██████████| 3871/38添加完负例子后有点蒙蔽71 [02:51<00:00, 22.59it/s]
+Loss: 0.0513 | IoU: 0.4349 | dice: 0.6108 | dice_neg: 0.1744 | dice_pos: 0.4364
+******** New optimal found, saving state ********
+
+Starting epoch: 2 | phase: train | ⏰: 12:38:32
+100%|██████████| 3870/3870 [38:30<00:00,  1.67it/s]
+Loss: 0.0537 | IoU: 0.4264 | dice: 0.6055 | dice_neg: 0.5262 | dice_pos: 0.5294
+Starting epoch: 2 | phase: val | ⏰: 13:17:02
+100%|██████████| 3871/3871 [02:51<00:00, 22.51it/s]
+Loss: 0.0484 | IoU: 0.4110 | dice: 0.5925 | dice_neg: 0.1780 | dice_pos: 0.4145
+******** New optimal found, saving state ********
+以上每没添加负例
+
+拟合的还不如以前。。
